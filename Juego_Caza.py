@@ -31,7 +31,7 @@ def init_puntajes_globals():
 
 
 def actualizar_top5(modo, nombre, puntuacion):
-    """Actualizar top5 (modo: 'escapa' o 'cazador')."""
+    """Actualiza ek top5 (modo: 'escapa' o 'cazador')."""
     global ESCAPA_TOP5, CAZADOR_TOP5
     if modo == "escapa":
         ESCAPA_TOP5.append((nombre, puntuacion))
@@ -42,7 +42,7 @@ def actualizar_top5(modo, nombre, puntuacion):
 
 
 def registrar_jugador(nombre):
-    """Registrar nombre en la lista de jugadores."""
+    """Registra el nombre en la lista de jugadores."""
     global JUGADORES
     if not nombre:
         return
@@ -51,7 +51,7 @@ def registrar_jugador(nombre):
 
 
 def registrar_puntaje_por_jugador(nombre, modo, puntuacion):
-    """Añadir entrada al historial por jugador (en memoria, lista simple)."""
+    """Añade entrada al historial por jugador """
     global HISTORIAL
     if not nombre:
         return
@@ -61,12 +61,6 @@ def registrar_puntaje_por_jugador(nombre, modo, puntuacion):
 # ----------------------------------------------------
 #   CLASES DE CELDAS (CAMINO, LIANA, MURO, TUNEL)
 # ----------------------------------------------------
-# (AQUÍ PEGAS TUS MISMAS CLASES SIN NINGÚN CAMBIO)
-# Camino, Liana, Tunel, Muro, etc.
-# TODO ESTO SE DEJA EXACTAMENTE COMO YA LO TIENES
-# ----------------------------------------------------
-
-
 # ----------------------------------------------------
 #     MENÚ INICIAL (ACTUALIZADO CON REGISTRO + TOP5)
 # ----------------------------------------------------
@@ -89,7 +83,6 @@ class MenuInicial:
         tk.Label(self.ventana_nombre, text="Ingrese su nombre:").pack(pady=10)
         self.entry_nombre = tk.Entry(self.ventana_nombre)
         self.entry_nombre.pack()
-        # prefijo con nombre global si existe
         if JUGADOR_NOMBRE:
             self.entry_nombre.insert(0, JUGADOR_NOMBRE)
 
@@ -131,7 +124,7 @@ class MenuInicial:
                 command=self.mostrar_registro_jugadores).pack(pady=5)
 
     # -----------------------
-    #   VENTANA TOP 5
+    #   VENTANA     DEL TOP 5
     # -----------------------
     def mostrar_top5(self):
         v = tk.Toplevel(self.master)
@@ -159,7 +152,7 @@ class MenuInicial:
                 tk.Label(v, text=f"{nombre} – {puntaje}").pack()
 
     # -----------------------
-    #   VENTANA REGISTRO DE JUGADORES (simple)
+    #   VENTANA REGISTRO DE JUGADORES 
     # -----------------------
     def mostrar_registro_jugadores(self):
         v = tk.Toplevel(self.master)
@@ -252,7 +245,7 @@ TIPOS_CASILLA = {
 }
 
 # ----------------------------------------------------
-#   GENERADOR DE MAPA (con BFS de validación)
+#   GENERADOR DE MAPA
 # ----------------------------------------------------
 class GeneradorMapa:
     def __init__(self, filas, columnas, semilla=None):
@@ -419,7 +412,7 @@ class Juego:
         self._pedir_parametros()
 
     def _pedir_parametros(self):
-        # diálogo simple para elegir tamaño, número de cazadores, velocidad
+        # diálogo simple para elegir tamaño, número de cazadores, velocidad (som los que están despues de TEXT entre comillas)
         dlg = tk.Toplevel(self.root)
         dlg.title("Parámetros de la partida")
         tk.Label(dlg, text="Tamaño del mapa:").grid(row=0, column=0, sticky="w", padx=6, pady=4)
@@ -1023,7 +1016,7 @@ class Juego:
         MenuInicial(self.root)
 
 # ----------------------------------------------------
-#   INICIO (si el archivo se ejecuta directamente)
+#   INICIO 
 # ----------------------------------------------------
 if __name__ == "__main__":
     init_puntajes_globals()
@@ -1031,4 +1024,5 @@ if __name__ == "__main__":
     root.configure(bg="#071021")  
     MenuInicial(root)
     root.mainloop()
+
 
