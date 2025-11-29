@@ -3,7 +3,7 @@ from tkinter import messagebox
 import random
 import time
 import os
-import json
+#import json
 import math
 import numpy as np
 
@@ -1024,5 +1024,6 @@ if __name__ == "__main__":
     root.configure(bg="#071021")  
     MenuInicial(root)
     root.mainloop()
+
 
 
