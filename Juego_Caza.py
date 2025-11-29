@@ -16,34 +16,48 @@ JUGADOR_NOMBRE = ""
 #   ARCHIVO DE PUNTAJES
 # -----------------------
 
-def crear_json():
-    """Crea el archivo si no existe."""
-    if not os.path.exists("puntajes.json"):
-        datos = {"escapa": [], "cazador": []}
-        with open("puntajes.json", "w") as f:
-            json.dump(datos, f, indent=4)
+#puntajes en memoria
+ESCAPA_TOP5 = []   # lista de tuplas (nombre, puntaje)
+CAZADOR_TOP5 = []  # lista de tuplas (nombre, puntaje)
+JUGADORES = []     # lista de nombres
+HISTORIAL = []     # lista de tuplas (nombre, modo, puntaje, ts)
+def init_puntajes_globals():
+    global ESCAPA_TOP5, CAZADOR_TOP5, JUGADORES, HISTORIAL
+    # ya inicializadas arriba; función para reiniciar si hace falta
+    ESCAPA_TOP5 = ESCAPA_TOP5 or []
+    CAZADOR_TOP5 = CAZADOR_TOP5 or []
+    JUGADORES = JUGADORES or []
+    HISTORIAL = HISTORIAL or []
 
-def cargar_puntajes():
-    crear_json()
-    with open("puntajes.json", "r") as f:
-        return json.load(f)
-
-def guardar_puntajes(puntajes):
-    with open("puntajes.json", "w") as f:
-        json.dump(puntajes, f, indent=4)
 
 def actualizar_top5(modo, nombre, puntuacion):
-    datos = cargar_puntajes()
-    datos[modo].append({"nombre": nombre, "puntaje": puntuacion})
+    """Actualizar top5 (modo: 'escapa' o 'cazador')."""
+    global ESCAPA_TOP5, CAZADOR_TOP5
+    if modo == "escapa":
+        ESCAPA_TOP5.append((nombre, puntuacion))
+        ESCAPA_TOP5 = sorted(ESCAPA_TOP5, key=lambda x: x[1], reverse=True)[:5]
+    elif modo == "cazador":
+        CAZADOR_TOP5.append((nombre, puntuacion))
+        CAZADOR_TOP5 = sorted(CAZADOR_TOP5, key=lambda x: x[1], reverse=True)[:5]
 
-    # Orden descendente
-    datos[modo] = sorted(datos[modo], key=lambda x: x["puntaje"], reverse=True)
 
-    # Solo top 5
-    datos[modo] = datos[modo][:5]
+def registrar_jugador(nombre):
+    """Registrar nombre en la lista de jugadores."""
+    global JUGADORES
+    if not nombre:
+        return
+    if nombre not in JUGADORES:
+        JUGADORES.append(nombre)
 
-    guardar_puntajes(datos)
 
+def registrar_puntaje_por_jugador(nombre, modo, puntuacion):
+    """Añadir entrada al historial por jugador (en memoria, lista simple)."""
+    global HISTORIAL
+    if not nombre:
+        return
+    HISTORIAL.append((nombre, modo, puntuacion, time.time()))
+    registrar_jugador(nombre)
+        
 # ----------------------------------------------------
 #   CLASES DE CELDAS (CAMINO, LIANA, MURO, TUNEL)
 # ----------------------------------------------------
@@ -68,13 +82,19 @@ class MenuInicial:
     def pedir_nombre(self):
         self.ventana_nombre = tk.Toplevel(self.master)
         self.ventana_nombre.title("Registro")
+        # mantener estilo retro (no cambiar colores globales)
+        self.ventana_nombre.transient(self.master)
+        self.ventana_nombre.grab_set()
 
         tk.Label(self.ventana_nombre, text="Ingrese su nombre:").pack(pady=10)
         self.entry_nombre = tk.Entry(self.ventana_nombre)
         self.entry_nombre.pack()
+        # prefijo con nombre global si existe
+        if JUGADOR_NOMBRE:
+            self.entry_nombre.insert(0, JUGADOR_NOMBRE)
 
         tk.Button(self.ventana_nombre, text="Continuar",
-                  command=self.guardar_nombre).pack(pady=10)
+                command=self.guardar_nombre).pack(pady=10)
 
     def guardar_nombre(self):
         global JUGADOR_NOMBRE
@@ -83,6 +103,8 @@ class MenuInicial:
             messagebox.showerror("Error", "Debe ingresar un nombre.")
             return
         JUGADOR_NOMBRE = nombre
+        registrar_jugador(nombre)
+        self.ventana_nombre.grab_release()
         self.ventana_nombre.destroy()
         self.mostrar_menu()
 
@@ -94,51 +116,105 @@ class MenuInicial:
         self.frame.pack(pady=20)
 
         tk.Label(self.frame, text=f"Bienvenido, {JUGADOR_NOMBRE}",
-                 font=("Arial", 14)).pack(pady=10)
+                font=("Arial", 14)).pack(pady=10)
 
         tk.Button(self.frame, text="Modo Escapa",
-                  command=lambda: self.iniciar_juego(1)).pack(pady=5)
+                    command=lambda: self.iniciar_juego(1)).pack(pady=5)
 
         tk.Button(self.frame, text="Modo Cazador",
-                  command=lambda: self.iniciar_juego(2)).pack(pady=5)
+                    command=lambda: self.iniciar_juego(2)).pack(pady=5)
 
         tk.Button(self.frame, text="Ver Top 5",
-                  command=self.mostrar_top5).pack(pady=5)
+                command=self.mostrar_top5).pack(pady=5)
+
+        tk.Button(self.frame, text="Registro de jugadores",
+                command=self.mostrar_registro_jugadores).pack(pady=5)
 
     # -----------------------
     #   VENTANA TOP 5
     # -----------------------
     def mostrar_top5(self):
-        datos = cargar_puntajes()
         v = tk.Toplevel(self.master)
         v.title("Top 5 Puntajes")
+        v.transient(self.master)
 
         tk.Label(v, text="Top 5 – Modo Escapa",
-                 font=("Arial", 14, "bold")).pack()
+                font=("Arial", 14, "bold")).pack()
 
-        if len(datos["escapa"]) == 0:
+        if not ESCAPA_TOP5:
             tk.Label(v, text="(Sin puntajes)").pack()
         else:
-            for p in datos["escapa"]:
-                tk.Label(v, text=f"{p['nombre']} – {p['puntaje']}").pack()
+            for nombre, puntaje in ESCAPA_TOP5:
+                tk.Label(v, text=f"{nombre} – {puntaje}").pack()
 
         tk.Label(v, text=" ", font=("Arial")).pack()
 
         tk.Label(v, text="Top 5 – Modo Cazador",
-                 font=("Arial", 14, "bold")).pack()
+                font=("Arial", 14, "bold")).pack()
 
-        if len(datos["cazador"]) == 0:
+        if not CAZADOR_TOP5:
             tk.Label(v, text="(Sin puntajes)").pack()
         else:
-            for p in datos["cazador"]:
-                tk.Label(v, text=f"{p['nombre']} – {p['puntaje']}").pack()
+            for nombre, puntaje in CAZADOR_TOP5:
+                tk.Label(v, text=f"{nombre} – {puntaje}").pack()
+
+    # -----------------------
+    #   VENTANA REGISTRO DE JUGADORES (simple)
+    # -----------------------
+    def mostrar_registro_jugadores(self):
+        v = tk.Toplevel(self.master)
+        v.title("Registro de jugadores")
+        v.transient(self.master)
+
+        tk.Label(v, text="Jugadores registrados:", font=("Arial", 12, "bold")).pack(pady=(8, 0))
+        listbox = tk.Listbox(v, width=40, height=8)
+        listbox.pack(padx=8, pady=6)
+        for name in JUGADORES:
+            listbox.insert(tk.END, name)
+
+        frm = tk.Frame(v)
+        frm.pack(pady=6)
+        tk.Label(frm, text="Nuevo nombre:").grid(row=0, column=0, padx=4, pady=4)
+        entry_new = tk.Entry(frm)
+        entry_new.grid(row=0, column=1, padx=4, pady=4)
+
+        def agregar():
+            nm = entry_new.get().strip()
+            if not nm:
+                return
+            registrar_jugador(nm)
+            listbox.insert(tk.END, nm)
+            entry_new.delete(0, tk.END)
+
+        def eliminar_seleccion():
+            sel = listbox.curselection()
+            if not sel:
+                return
+            idx = sel[0]
+            nombre = listbox.get(idx)
+            if nombre in JUGADORES:
+                try:
+                    # eliminar de JUGADORES
+                    JUGADORES.remove(nombre)
+                    # eliminar entradas de HISTORIAL
+                    global HISTORIAL
+                    HISTORIAL = [h for h in HISTORIAL if h[0] != nombre]
+                    # eliminar de top5 si aparece
+                    global ESCAPA_TOP5, CAZADOR_TOP5
+                    ESCAPA_TOP5 = [t for t in ESCAPA_TOP5 if t[0] != nombre]
+                    CAZADOR_TOP5 = [t for t in CAZADOR_TOP5 if t[0] != nombre]
+                except Exception:
+                    pass
+            listbox.delete(idx)
+
+        tk.Button(frm, text="Agregar", command=agregar).grid(row=1, column=0, pady=6)
+        tk.Button(frm, text="Eliminar seleccionado", command=eliminar_seleccion).grid(row=1, column=1, pady=6)
 
     # -------------------------------------
-    #   INICIAR JUEGO (como ya lo tenías)
+    #   INICIAR JUEGO 
     # -------------------------------------
-    def iniciar_juego(self, modo):
+    def inicia_juego(self,modo):
         self.frame.destroy()
-        # LLAMADA A TU CLASE Juego EXACTAMENTE COMO YA LO TENÍAS
         Juego(self.master, modo)
 # ----------------------------------------------------
 #   TIPOS DE CASILLA (LÓGICA)
@@ -165,7 +241,7 @@ class Muro(Casilla):
 
 class Salida(Casilla):
     def es_transitable_jugador(self): return True
-    def es_transitable_cazador(self): return True
+    def es_transitable_cazador(self): return False
 
 TIPOS_CASILLA = {
     0: Camino,
@@ -950,8 +1026,9 @@ class Juego:
 #   INICIO (si el archivo se ejecuta directamente)
 # ----------------------------------------------------
 if __name__ == "__main__":
-    crear_json()
+    init_puntajes_globals()
     root = tk.Tk()
-    root.configure(bg="#071021")
+    root.configure(bg="#071021")  
     MenuInicial(root)
     root.mainloop()
+
